@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 
 from .models import User
 from .serializers import UserSerializer
-from .authentication import JWTAuthentication, create_access_token, create_refresh_token
+from .authentication import JWTAuthentication, create_access_token, create_refresh_token, decode_refresh_token
 
 
 class RegisterAPIView(APIView):
@@ -35,13 +35,16 @@ class LoginAPIView(APIView):
         if not user.check_password(password):
             raise exceptions.AuthenticationFailed('Invalid credentials')
 
+        # create JWT access and refresh tokens
         access_token = create_access_token(user.id)
-        # refresh_token = create_refresh_token(user.id) ???
-        refresh_token = create_access_token(user.id)
+        refresh_token = create_refresh_token(user.id)
 
         response = Response()
 
-        response.set_cookie(key='refresh_token', value=refresh_token, httponly=True)
+        # set refresh token in cookies
+        response.set_cookie(key='refresh_token',
+                            value=refresh_token, httponly=True)
+        # set access token in response
         response.data = {
             'token': access_token
         }
@@ -54,3 +57,15 @@ class UserAPIView(APIView):
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+
+class RefreshAPIView(APIView):
+    def post(self, request):
+        refresh_token = request.COOKIES.get('refresh_token')
+        id = decode_refresh_token(refresh_token)
+
+        access_token = create_access_token(id)
+
+        return Response({
+            'token': access_token
+        })

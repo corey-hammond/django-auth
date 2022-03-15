@@ -1,4 +1,5 @@
-import jwt, datetime
+import jwt
+import datetime
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 from rest_framework.response import Response
@@ -44,3 +45,12 @@ def create_refresh_token(id):
         'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7),
         'iat': datetime.datetime.utcnow()
     }, 'refresh_secret', algorithm="HS256")
+
+
+def decode_refresh_token(token):
+    try:
+        payload = jwt.decode(token, 'refresh_secret', algorithms='HS256')
+
+        return payload['user_id']
+    except:
+        raise exceptions.AuthenticationFailed('unauthenticated')
