@@ -2,6 +2,7 @@ from rest_framework import exceptions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .models import User
 from .serializers import UserSerializer
 
 
@@ -17,3 +18,22 @@ class RegisterAPIView(APIView):
         serializer.save()
 
         return Response(serializer.data)
+
+
+class LoginAPIView(APIView):
+    def post(self, request):
+        email = request.data['email']
+        password = request.data['password']
+
+        user = User.objects.filter(email=email).first()
+
+        if user is None:
+            raise exceptions.AuthenticationFailed('Invalid credentials')
+
+        if not user.check_password(password):
+            raise exceptions.AuthenticationFailed('Invalid credentials')
+
+        serializer = UserSerializer(user)
+
+        return Response(serializer.data)
+
