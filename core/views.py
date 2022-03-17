@@ -1,10 +1,12 @@
 import datetime
+import random
+import string
 from rest_framework import exceptions
 from rest_framework.authentication import get_authorization_header
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import User, UserToken
+from .models import Reset, User, UserToken
 from .serializers import UserSerializer
 from .authentication import JWTAuthentication, create_access_token, create_refresh_token, decode_refresh_token
 
@@ -98,3 +100,18 @@ class LogoutAPIView(APIView):
         }
 
         return response
+
+
+class ResetAPIView(APIView):
+    def post(self, request):
+        token = ''.join(random.choice(string.ascii_lowercase +
+                        string.digits) for _ in range(10))
+
+        Reset.objects.create(
+            email=request.data['email'],
+            token=token,
+        )
+
+        return Response({
+            'message': 'success'
+        })
