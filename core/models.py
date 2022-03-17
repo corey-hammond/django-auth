@@ -22,5 +22,5 @@ class UserToken(models.Model):
 
 
 class Reset(models.Model):
-    user_id = models.IntegerField()
-    token = models.CharField(max_length=255)
+    email = models.CharField(max_length=255)
+    token = models.CharField(max_length=255, unique=True)

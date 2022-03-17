@@ -1,6 +1,7 @@
 import datetime
 import random
 import string
+from django.core.mail import send_mail
 from rest_framework import exceptions
 from rest_framework.authentication import get_authorization_header
 from rest_framework.response import Response
@@ -102,15 +103,53 @@ class LogoutAPIView(APIView):
         return response
 
 
-class ResetAPIView(APIView):
+class ForgotPasswordAPIView(APIView):
     def post(self, request):
+        email = request.data['email']
         token = ''.join(random.choice(string.ascii_lowercase +
                         string.digits) for _ in range(10))
 
+        # create reset token
         Reset.objects.create(
-            email=request.data['email'],
-            token=token,
+            email=email,
+            token=token
         )
+
+        # url to frontend
+        url = 'http://localhost:3000/forgot-password/' + token
+
+        # send reset email
+        send_mail(
+            subject='Reset your password',
+            message='Click <a href="%s">here</a> to reset your password.' % url,
+            from_email='from@example.com',
+            recipient_list=[email]
+        )
+
+        return Response({
+            'message': 'success'
+        })
+
+
+class ResetAPIView(APIView):
+    def post(self, request):
+        data = request.data
+
+        if data['password'] != data['password_confirm']:
+            raise exceptions.APIException('Passwords do not match')
+
+        reset_token = Reset.objects.filter(token=data['token']).first()
+
+        if not reset_token:
+            raise exceptions.APIException('Invalid link')
+
+        user = User.objects.filter(email=reset_token.email).first()
+
+        if not reset_token:
+            raise exceptions.APIException('User not found')
+
+        user.set_password(data['password'])
+        user.save()
 
         return Response({
             'message': 'success'
