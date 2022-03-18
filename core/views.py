@@ -2,6 +2,8 @@ import datetime
 import random
 import string
 import pyotp
+from google.oauth2 import id_token
+from google.auth.transport.requests import Request as GoogleRequest
 from django.core.mail import send_mail
 from rest_framework import exceptions
 from rest_framework.authentication import get_authorization_header
@@ -188,3 +190,47 @@ class ResetAPIView(APIView):
         return Response({
             'message': 'success'
         })
+
+
+class GoogleAuthAPIView(APIView):
+    def post(self, request):
+        token = request.data['token']
+
+        googleUser = id_token.verify_token(token, GoogleRequest())
+
+        if not googleUser:
+            raise exceptions.AuthenticationFailed('unauthenticated')
+
+        usr = User.objects.filter(email=googleUser['email']).first()
+
+        if not user:
+            user = User.objects.create(
+                first_name=googleUser['given_name'],
+                last_name=googleUser['family_name'],
+                email=googleUser['email'],
+            )
+            user.set_password(token)
+            user.save()
+
+        # create JWT access and refresh tokens
+        access_token = create_access_token(user.id)
+        refresh_token = create_refresh_token(user.id)
+
+        # create a UserToken value
+        UserToken.objects.create(
+            user_id=user.id,
+            token=refresh_token,
+            expired_at=datetime.datetime.utcnow() + datetime.timedelta(days=7)
+        )
+
+        response = Response()
+
+        # set refresh token in cookies
+        response.set_cookie(key='refresh_token',
+                            value=refresh_token, httponly=True)
+        # set access token in response
+        response.data = {
+            'token': access_token
+        }
+
+        return response
