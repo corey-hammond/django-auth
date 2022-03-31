@@ -99,6 +99,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# ensures our exception status codes are 401 and not 403
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'core.exceptions.status_code_handler'
 }
